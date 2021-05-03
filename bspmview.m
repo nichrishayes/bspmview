@@ -456,7 +456,7 @@ function uicell = default_lowerpane
        11, 4, 2, 'DF'                  , 'uilabel'     , prop.text ;   ...
        11, 4, 5, 'Type'          , 'uilabel'     , prop.text ;   ...
        12, 4, 2, ''                    , 'DF'          , [prop.edit {'Callback', @cb_updateoverlay}] ;   ...
-       12, 4, 5, {'User-specified' 'Voxel FWE' 'Cluster FWE' 'Cluster FDR'}                    , 'Correction'  , [prop.popup {'Value', 1, 'Callback', @cb_correct}]     ...
+       12, 4, 5, {'User-specified' 'Max-Min Tails Thresh' 'Voxel FWE' 'Cluster FWE' 'Cluster FDR'}                    , 'Correction'  , [prop.popup {'Value', 1, 'Callback', @cb_correct}]     ...
     };
 function uicell = default_upperpane
 
@@ -922,6 +922,7 @@ function cb_updateoverlay(varargin)
     setthreshinfo(T);
     setmaxima;
     drawnow;
+    
 function cb_correct(varargin)
     setstatus('Working, please wait...');
     global st
@@ -933,6 +934,10 @@ function cb_correct(varargin)
     switch methodstr
         case {'User-specified'}
             cb_resetol;
+            setstatus('Ready');
+            return;
+        case {'Max-Min Tails Thresh'}
+            cb_minmax_tails_thresh;
             setstatus('Ready');
             return;
         case {'Voxel FWE'}
@@ -957,6 +962,7 @@ function cb_correct(varargin)
     setthresh(C, find(di));
     setthreshinfo(T);
     setstatus('Ready');
+    
 function cb_directmenu(varargin)
     global st
     if ischar(varargin{1}), str = varargin{1};
@@ -1232,6 +1238,7 @@ function cb_loadol(varargin)
     setthreshinfo;
     check4design;
     drawnow;
+    
 function cb_resetol(varargin)
     global st
     set(findobj(st.fig, 'Tag', 'Correction'), 'Value', 1);
@@ -1240,6 +1247,39 @@ function cb_resetol(varargin)
     setthresh(st.ol.C0(find(di),:), find(di));
     setthreshinfo;
     drawnow;
+    
+function cb_minmax_tails_thresh(varargin)
+    global st
+    
+    %Turn on Correction
+    set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'on');
+    
+    %Set Tag to Max-Min
+    set(findobj(st.fig, 'Tag', 'Correction'), 'value', ...
+                    find(strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh'))...
+                );
+    
+    %Drop other thresholding options
+    disableothercorrs;
+    
+    %Threshold it
+    st.ol.Y = cb_minmax_tails_thresh_correct(st.ol.Y);
+    
+    
+ function nii_file_data_abs_threshed = cb_minmax_tails_thresh_correct(varargin)
+     %Threshold data
+     nii_file_data_abs = abs(varargin{1});
+     nii_file_data_abs_mean = mean(nii_file_data_abs,'all');
+     nii_file_data_asb_std = std(nii_file_data_abs,0,'all');
+     nii_file_data_asb_std_lower = abs(nii_file_data_abs_mean - (3*nii_file_data_asb_std));
+     nii_file_data_asb_std_upper = abs(nii_file_data_abs_mean + (3*nii_file_data_asb_std));
+     nii_file_data_abs_thresher = nii_file_data_abs > nii_file_data_asb_std_lower & nii_file_data_abs < nii_file_data_asb_std_upper;%data to keep
+     nii_file_data_abs_threshed = nii_file_data_abs;
+     nii_file_data_abs_threshed(~nii_file_data_abs_thresher) = NaN;
+     
+    
+    
+    
 function cb_loadul(varargin)
 
     ul = uigetvol('Select an Image File for Underlay', 0);
@@ -2264,6 +2304,7 @@ function pos = setposition_auxwindow
         pos(1) = fs(1)-pos(3);
     end
     pos([2 4]) = fs([2 4]);
+    
 function setthreshinfo(T)
     global st
     if nargin==0
@@ -2287,20 +2328,31 @@ function setthreshinfo(T)
         set(findobj(st.fig, 'Tag', Tstr{i}), 'String', num2str(Tval(i)));
         drawnow;
     end
+    
+function disableothercorrs
+    global st
+    %opt = default_lowerpane;
+    %opt = opt{strcmp(opt(:,5), 'Correction'), 4};
+    h = findobj(st.fig, 'Tag', 'Correction');
+    set(h, 'Value', 1)
+    set(h, 'String', {'Max-Min Tails Thresh'});
+    
 function enablefdr
     global st
     opt = default_lowerpane;
     opt = opt{strcmp(opt(:,5), 'Correction'), 4};
     h = findobj(st.fig, 'Tag', 'Correction');
     set(h, 'String', opt);
+    
 function disablefdr
     global st
     opt = default_lowerpane;
     opt = opt{strcmp(opt(:,5), 'Correction'), 4};
     h = findobj(st.fig, 'Tag', 'Correction');
     v = get(h, 'Value');
-    if v==4, set(h, 'Value', 1); end
-    set(h, 'String', opt(1:3));
+    if v==find(strcmp(opt,'Cluster FDR')), set(h, 'Value', find(strcmp(opt,'User-specified'))); end
+    set(h, 'String', opt(~strcmp(opt,'Cluster FDR')));
+    
 function setthresh(C, di)
     global st
     if nargin==1, di = 3; end
@@ -2326,6 +2378,7 @@ function setthresh(C, di)
     bspm_orthviews('Reposition');
     setmaxima;
     drawnow;
+    
 function [voxval, clsize] = setvoxelinfo
     global st
     [nxyz,voxidx, d]    = getnearestvoxel;
@@ -3027,16 +3080,25 @@ function out = growregion(roi, xyz)
 
     % | IMAGE TYPE CHECKS
     % =========================================================================
+    
+    
 function flag       = check4design
         global st
         flag = 0;
+        
         if ~exist(fullfile(fileparts(st.ol.fname), 'I.mat'),'file') & ~exist(fullfile(fileparts(st.ol.fname), 'SPM.mat'),'file')
             flag = 1;
             printmsg('No SPM.mat or I.mat - Disabling threshold correction', 'WARNING');
-            set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'off');
+            set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'off'); findobj(st.fig, 'tag', 'Correction')
+            
+%             cb_minmax_tails_thresh;
         else
             set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'on');
         end
+        
+        
+
+
 function flag       = check4mask(img)
         flag = 1;
         if ~any(ismember(unique(img(:)), [0 1])), flag = 0; end
@@ -3064,7 +3126,7 @@ function df         = check4df(hdr)
         df = regexp(hdr.descrip, '\[\d+.*]', 'match');
         if isempty(df)
             df = [];
-            headsup('Degrees of freedom not found in image header or its parent directory. Showing unthresholded image.')
+            %headsup('Degrees of freedom not found in image header or its parent directory. Showing unthresholded image.')
         else
             df = str2num(char(df));
         end
