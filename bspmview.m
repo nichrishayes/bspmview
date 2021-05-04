@@ -787,9 +787,9 @@ function put_axesmenu
     ctsavergb  = uimenu(ctsave, 'Label', 'Save Screen Capture', 'callback', @cb_savergb);
     ctns       = uimenu(cmenu, 'Label', 'Search Location in Neurosynth',  'CallBack', @cb_neurosynth, 'separator', 'on');
     ctxhair    = uimenu(cmenu, 'Label', 'Toggle Crosshairs', 'checked', 'on', 'Accelerator', 'c', 'Tag', 'Crosshairs', 'callback', {@cb_crosshair, 'toggle'}, 'separator', 'on');
-    for a = 1:3
-        set(h.ax(a), 'uicontextmenu', cmenu);
-    end
+%     for a = 1:3
+%         set(h.ax(a), 'UIContextMenu', cmenu);
+%     end
     drawnow;
 function put_axesxyz
     global st
@@ -1329,7 +1329,8 @@ function cb_minval_tails_thresh(varargin)
     
  function [nii_file_data_asb_std_upper,nii_file_data_asb_std_lower,nii_file_data_abs_threshed] = cb_minmax_tails_thresh_correct(varargin)
      %Threshold data
-     nii_file_data_abs = abs(varargin{1});
+     nii_file_data = varargin{1}(varargin{1} ~= 0);
+     nii_file_data_abs = abs(nii_file_data);
      nii_file_data_abs_mean = mean(nii_file_data_abs,'all');
      nii_file_data_asb_std = std(nii_file_data_abs,0,'all');
      nii_file_data_asb_std_lower = abs(nii_file_data_abs_mean - (3*nii_file_data_asb_std));
@@ -3161,14 +3162,14 @@ function flag       = check4design
         global st
         flag = 0;
         
-        if ~exist(fullfile(fileparts(st.ol.fname), 'I.mat'),'file') & ~exist(fullfile(fileparts(st.ol.fname), 'SPM.mat'),'file')
+        if exist(fullfile(fileparts(st.ol.fname), 'I.mat'),'file') | exist(fullfile(fileparts(st.ol.fname), 'SPM.mat'),'file')
+            set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'on');
+        else
             %flag = 1;
             %printmsg('No SPM.mat or I.mat - Disabling threshold correction', 'WARNING');
             %set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'off');
             
             cb_minmax_tails_thresh;
-        else
-            set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'on');
         end
         
         
