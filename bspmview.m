@@ -1262,11 +1262,72 @@ function cb_minmax_tails_thresh(varargin)
     %Drop other thresholding options
     disableothercorrs;
     
-    %Threshold it
-    st.ol.Y = cb_minmax_tails_thresh_correct(st.ol.Y);
+    % Threshold it
+    [max,min,~] = cb_minmax_tails_thresh_correct(st.ol.Y);
+    
+    set(findobj('Tag','minval'), 'string', num2str(min));
+    set(findobj('Tag','maxval'), 'string', num2str(max));
+    
+    st.vols{1}.blobs{1}.min = min;
+    st.vols{1}.blobs{1}.max = max;
+    bspm_orthviews('redraw');
+    
+    redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
+    setcolormap;
+    
+   
     
     
- function nii_file_data_abs_threshed = cb_minmax_tails_thresh_correct(varargin)
+    
+function cb_maxval_tails_thresh(varargin)
+    global st
+    % | Check for Numeric Input
+    if isnan(str2double(get(varargin{1}, 'string'))) | str2double(get(varargin{1}, 'string'))<0
+        warndlg('Input must be numerical and positive');
+        mm = getminmax;
+        set(varargin{1}, 'string', num2str(mm(2)));
+        return
+    end
+    
+    valMax = str2double(get(varargin{1}, 'string'));
+    valMin = str2double(get(findobj('Tag','minval'),'string'));
+    
+    if valMin > valMax
+        set(findobj('Tag','minval'), 'string', num2str(valMax-1));
+        bspm_orthviews('SetBlobsMin', 1, 1, valMax-1);
+        setcolormap;
+    end
+    
+    bspm_orthviews('SetBlobsMax', 1, 1, valMax);
+    redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
+    setcolormap;
+    
+
+function cb_minval_tails_thresh(varargin)
+    global st
+    % | Check for Numeric AND positive Input
+    if isnan(str2double(get(varargin{1}, 'string'))) | str2double(get(varargin{1}, 'string'))<0
+        warndlg('Input must be numerical and positive');
+        mm = getminmax;
+        set(varargin{1}, 'string', num2str(mm(1)));
+        return
+    end
+    
+    valMin = str2double(get(varargin{1}, 'string'));
+    valMax = str2double(get(findobj('Tag','maxval'),'string'));
+    
+    if valMin > valMax
+        set(findobj('Tag','maxval'), 'string', num2str(valMin+1));
+        bspm_orthviews('SetBlobsMax', 1, 1, valMin+1);
+        setcolormap;
+    end
+    
+    bspm_orthviews('SetBlobsMin', 1, 1, valMin);
+    redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
+    setcolormap;
+    
+    
+ function [nii_file_data_asb_std_upper,nii_file_data_asb_std_lower,nii_file_data_abs_threshed] = cb_minmax_tails_thresh_correct(varargin)
      %Threshold data
      nii_file_data_abs = abs(varargin{1});
      nii_file_data_abs_mean = mean(nii_file_data_abs,'all');
@@ -1275,7 +1336,7 @@ function cb_minmax_tails_thresh(varargin)
      nii_file_data_asb_std_upper = abs(nii_file_data_abs_mean + (3*nii_file_data_asb_std));
      nii_file_data_abs_thresher = nii_file_data_abs > nii_file_data_asb_std_lower & nii_file_data_abs < nii_file_data_asb_std_upper;%data to keep
      nii_file_data_abs_threshed = nii_file_data_abs;
-     nii_file_data_abs_threshed(~nii_file_data_abs_thresher) = NaN;
+     nii_file_data_abs_threshed(~nii_file_data_abs_thresher) = 0;
      
     
     
@@ -1531,31 +1592,45 @@ function cb_minmax(varargin)
     drawnow;
 function cb_maxval(varargin)
     global st
-
-    % | Check for Numeric Input
-    if isnan(str2double(get(varargin{1}, 'string')))
-        warndlg('Input must be numerical');
-        mm = getminmax;
-        set(varargin{1}, 'string', num2str(mm(2)));
-        return
+    
+    % Check active correction method
+    if strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh')
+        % alternative here
+        cb_maxval_tails_thresh(findobj('Tag','maxval'));
+    else
+        % | Check for Numeric Input
+        if isnan(str2double(get(varargin{1}, 'string')))
+            warndlg('Input must be numerical');
+            mm = getminmax;
+            set(varargin{1}, 'string', num2str(mm(2)));
+            return
+        end
+        val = str2double(get(varargin{1}, 'string'));
+        bspm_orthviews('SetBlobsMax', 1, 1, val);
+        redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
+        setcolormap;
     end
-    val = str2double(get(varargin{1}, 'string'));
-    bspm_orthviews('SetBlobsMax', 1, 1, val);
-    redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
-    setcolormap;
 function cb_minval(varargin)
     global st
-    % | Check for Numeric Input
-    if isnan(str2double(get(varargin{1}, 'string')))
-        warndlg('Input must be numerical');
-        mm = getminmax;
-        set(varargin{1}, 'string', num2str(mm(1)));
-        return
+    
+    % Check active correction method
+    if strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh')
+        % alternative here
+        cb_minval_tails_thresh(findobj('Tag','minval'));
+    else
+        % | Check for Numeric Input
+        if isnan(str2double(get(varargin{1}, 'string')))
+            warndlg('Input must be numerical');
+            mm = getminmax;
+            set(varargin{1}, 'string', num2str(mm(1)));
+            return
+        end
+        val = str2double(get(varargin{1}, 'string'));
+        bspm_orthviews('SetBlobsMin', 1, 1, val);
+        redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
+        setcolormap;
     end
-    val = str2double(get(varargin{1}, 'string'));
-    bspm_orthviews('SetBlobsMin', 1, 1, val);
-    redraw_colourbar(st.hld, 1, getminmax, (1:64)'+64);
-    setcolormap;
+    
 function cb_changexyz(varargin)
     xyz = str2num(get(varargin{1}, 'string'));
     bspm_orthviews('reposition', xyz');
@@ -3087,11 +3162,11 @@ function flag       = check4design
         flag = 0;
         
         if ~exist(fullfile(fileparts(st.ol.fname), 'I.mat'),'file') & ~exist(fullfile(fileparts(st.ol.fname), 'SPM.mat'),'file')
-            flag = 1;
-            printmsg('No SPM.mat or I.mat - Disabling threshold correction', 'WARNING');
-            set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'off'); findobj(st.fig, 'tag', 'Correction')
+            %flag = 1;
+            %printmsg('No SPM.mat or I.mat - Disabling threshold correction', 'WARNING');
+            %set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'off');
             
-%             cb_minmax_tails_thresh;
+            cb_minmax_tails_thresh;
         else
             set(findobj(st.fig, 'Tag', 'Correction'), 'Enable', 'on');
         end
@@ -5305,22 +5380,39 @@ function redraw(arg1)
                             st.vols{i}.blobs{1}.min = mn;
                         end
 
+                        
                         vol  = st.vols{i}.blobs{1}.vol;
                         M    = st.Space\st.vols{i}.premul*st.vols{i}.blobs{1}.mat;
                         tmpt = spm_slice_vol(vol,inv(TM0*M),TD,[0 NaN])';
                         tmpc = spm_slice_vol(vol,inv(CM0*M),CD,[0 NaN])';
                         tmps = spm_slice_vol(vol,inv(SM0*M),SD,[0 NaN])';
-
+                        
                         %tmpt_z = find(tmpt==0);tmpt(tmpt_z) = NaN;
                         %tmpc_z = find(tmpc==0);tmpc(tmpc_z) = NaN;
                         %tmps_z = find(tmps==0);tmps(tmps_z) = NaN;
 
-                        sc   = 64/(mx-mn);
-                        off  = 65.51-mn*sc;
-                        msk  = find(isfinite(tmpt)); imgt(msk) = off+tmpt(msk)*sc;
-                        msk  = find(isfinite(tmpc)); imgc(msk) = off+tmpc(msk)*sc;
-                        msk  = find(isfinite(tmps)); imgs(msk) = off+tmps(msk)*sc;
-
+                        
+                        
+                        if strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh')
+                            sc   = 64/(mx+mn);
+                            off  = 65.51+mn*2*sc;
+                            
+                            tmpt_msk_Logical = abs(tmpt) > mn & abs(tmpt) < mx & ~isnan(abs(tmpt));
+                            tmpc_msk_Logical = abs(tmpc) > mn & abs(tmpc) < mx & ~isnan(abs(tmpc));
+                            tmps_msk_Logical = abs(tmps) > mn & abs(tmps) < mx & ~isnan(abs(tmps));
+                            
+                            imgt(tmpt_msk_Logical) = off+tmpt(tmpt_msk_Logical)*sc;
+                            imgc(tmpc_msk_Logical) = off+tmpc(tmpc_msk_Logical)*sc;
+                            imgs(tmps_msk_Logical) = off+tmps(tmps_msk_Logical)*sc;
+                            
+                        else
+                            sc   = 64/(mx-mn);
+                            off  = 65.51-mn*sc;
+                            msk  = find(isfinite(tmpt)); imgt(msk) = off+tmpt(msk)*sc;
+                            msk  = find(isfinite(tmpc)); imgc(msk) = off+tmpc(msk)*sc;
+                            msk  = find(isfinite(tmps)); imgs(msk) = off+tmps(msk)*sc;
+                        end
+                        
 
                         cmap = get(st.fig,'Colormap');
                         if size(cmap,1)~=128
@@ -5491,17 +5583,22 @@ function redraw(arg1)
                     imgc = imgc*scal+dcoff;
                     imgs = imgs*scal+dcoff;
                 end
+                
+                
                 set(st.vols{i}.ax{1}.d,'HitTest','off', 'Cdata',imgt);
                 set(st.vols{i}.ax{1}.lx,'HitTest','off',...
                     'Xdata',[0 TD(1)]+0.5,'Ydata',[1 1]*(cent(2)-bb(1,2)+1));
                 set(st.vols{i}.ax{1}.ly,'HitTest','off',...
                     'Ydata',[0 TD(2)]+0.5,'Xdata',[1 1]*(cent(1)-bb(1,1)+1));
+                
                 set(st.vols{i}.ax{2}.d,'HitTest','off', 'Cdata',imgc);
                 set(st.vols{i}.ax{2}.lx,'HitTest','off',...
                     'Xdata',[0 CD(1)]+0.5,'Ydata',[1 1]*(cent(3)-bb(1,3)+1));
                 set(st.vols{i}.ax{2}.ly,'HitTest','off',...
                     'Ydata',[0 CD(2)]+0.5,'Xdata',[1 1]*(cent(1)-bb(1,1)+1));
+                
                 set(st.vols{i}.ax{3}.d,'HitTest','off','Cdata',imgs);
+                
                 if st.mode ==0
                     set(st.vols{i}.ax{3}.lx,'HitTest','off',...
                         'Xdata',[0 SD(1)]+0.5,'Ydata',[1 1]*(cent(2)-bb(1,2)+1));
@@ -6046,15 +6143,31 @@ function redraw_colourbar(vh,bh,interval,cdata)
         if ndims(cdata)==3 && max(cdata(:))>1
             cdata=cdata./max(cdata(:));
         end
-        yl = interval;
-        yltick  = [ceil(min(yl)) floor(max(yl))];
-        yltick(abs(yl) < 1) = yl(abs(yl) < 1);
-        if strcmpi(st.direct, '+/-') & min(yltick)<0
-            yltick = [yltick(1) 0 yltick(2)];
+        
+        
+        % Check active correction method
+        if strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh')
+            yl = interval;
+            yltick  = [ceil(min(yl)) floor(max(yl))];
+            
+            h = st.vols{vh}.blobs{bh}.cbar;
+            %-19:abs(-19-19)/64:19 max(st.ol.Y(:))
+            yltick = [-yltick(2) -yltick(1) 0 yltick(1) yltick(2)];
+            image([0 1],[yltick(1) yltick(end)],cdata,'Parent',h);
+            ylab = cellnum2str(num2cell(yltick), 2);
+        else
+            yl = interval;
+            yltick  = [ceil(min(yl)) floor(max(yl))];
+            yltick(abs(yl) < 1) = yl(abs(yl) < 1);
+            if strcmpi(st.direct, '+/-') & min(yltick)<0
+                yltick = [yltick(1) 0 yltick(2)];
+            end
+
+            h = st.vols{vh}.blobs{bh}.cbar;
+            ylab = cellnum2str(num2cell(yltick), 2);
+            image([0 1],interval,cdata,'Parent',h);
         end
-        ylab = cellnum2str(num2cell(yltick), 2);
-        h = st.vols{vh}.blobs{bh}.cbar;
-        image([0 1],interval,cdata,'Parent',h);
+        
         set(h, 'ycolor', st.color.fg, ...
             'position', cbpos, 'YAxisLocation', 'right', ...
             'ytick', yltick, ...
