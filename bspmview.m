@@ -352,6 +352,11 @@ function cmap   = default_colormaps(depth)
     cmap{6,2}   = 'linspecer';
     cmap{7,1}   = colorGray(depth);
     cmap{7,2}   = 'colorGray';
+    
+    diconlab_cmaps = load('bspm_diconlab_cmaps.mat');
+    cmap{8,1}   = diconlab_cmaps.dicon_green_orange;
+    cmap{8,2}   = 'dicon_green-orange';
+    
     anchor = size(cmap,1);
     bmap1 = {'Blues' 'Greens' 'Greys' 'Oranges' 'Purples' 'Reds'};
     for i = 1:length(bmap1)
@@ -974,7 +979,7 @@ function cb_directmenu(varargin)
         enablefdr;
     elseif strcmp(str, '+/-')
         htmp        = findobj(st.fig, 'Tag', 'colormaplist');
-        set(htmp, 'value', find(strcmpi(get(htmp, 'String'), 'signed')));
+        set(htmp, 'value', find(strcmpi(get(htmp, 'String'), 'dicon_green-orange')));
         disablefdr;
     end
     allh = findobj(st.fig, 'Tag', 'direct');
