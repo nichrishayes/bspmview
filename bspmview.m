@@ -357,6 +357,7 @@ function cmap   = default_colormaps(depth)
     cmap{8,1}   = diconlab_cmaps.dicon_green_orange;
     cmap{8,2}   = 'dicon_green-orange';
     
+    
     anchor = size(cmap,1);
     bmap1 = {'Blues' 'Greens' 'Greys' 'Oranges' 'Purples' 'Reds'};
     for i = 1:length(bmap1)
@@ -1334,15 +1335,16 @@ function cb_minval_tails_thresh(varargin)
     
  function [nii_file_data_asb_std_upper,nii_file_data_asb_std_lower,nii_file_data_abs_threshed] = cb_minmax_tails_thresh_correct(varargin)
      %Threshold data
-     nii_file_data = varargin{1}(varargin{1} ~= 0);
+     nii_file_data = varargin{1};
+     nii_file_data(nii_file_data == 0) = nan;
      nii_file_data_abs = abs(nii_file_data);
-     nii_file_data_abs_mean = mean(nii_file_data_abs,'all');
-     nii_file_data_asb_std = std(nii_file_data_abs,0,'all');
+     nii_file_data_abs_mean = mean(nii_file_data_abs,'all','omitnan');
+     nii_file_data_asb_std = std(nii_file_data_abs,0,'all','omitnan');
      nii_file_data_asb_std_lower = abs(nii_file_data_abs_mean - (3*nii_file_data_asb_std));
      nii_file_data_asb_std_upper = abs(nii_file_data_abs_mean + (3*nii_file_data_asb_std));
      nii_file_data_abs_thresher = nii_file_data_abs > nii_file_data_asb_std_lower & nii_file_data_abs < nii_file_data_asb_std_upper;%data to keep
      nii_file_data_abs_threshed = nii_file_data_abs;
-     nii_file_data_abs_threshed(~nii_file_data_abs_thresher) = 0;
+     nii_file_data_abs_threshed(~nii_file_data_abs_thresher) = nan;
      
     
     
@@ -5401,7 +5403,7 @@ function redraw(arg1)
                         
                         if strcmpi(get(findobj(st.fig, 'tag', 'Correction'), 'string'), 'Max-Min Tails Thresh')
                             sc   = 64/(mx+mn);
-                            off  = 65.51+mn*2*sc;
+                            off  = 65.51+mx*sc;
                             
                             tmpt_msk_Logical = abs(tmpt) > mn & abs(tmpt) < mx & ~isnan(abs(tmpt));
                             tmpc_msk_Logical = abs(tmpc) > mn & abs(tmpc) < mx & ~isnan(abs(tmpc));
